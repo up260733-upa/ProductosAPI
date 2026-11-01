@@ -60,17 +60,21 @@ Ejemplo de body para `POST` y `PUT`:
 
 ## Flujo del proyecto
 
-Cuando la app arranca, `Program.cs` registra `ConexionDb` y le indica que, cada vez que alguien pida un `IProductoRepository`, entregue un `ProductoRepository`. Así los endpoints solo conocen la interface y no saben cómo se guardan los datos.
+El proyecto está dividido en partes y cada una hace una sola cosa: los endpoints reciben las peticiones, el repositorio habla con la base de datos y `ConexionDb` abre la conexión.
 
-Una petición recorre estos pasos:
+Al arrancar, `Program.cs` prepara todo y deja listo Swagger, que es la página desde donde se prueba la API. También indica que, cuando se pida un `IProductoRepository`, se use `ProductoRepository`. Por eso los endpoints trabajan con la interface y no necesitan saber cómo se guardan los datos.
 
-1. Swagger manda la petición HTTP, por ejemplo `POST /api/productos` con un JSON.
-2. El endpoint que coincide con la ruta convierte el JSON en un objeto `Producto`.
-3. En `POST` y `PUT`, el método `Validar` revisa el nombre, la descripción, el precio y el stock. Si algo está mal, responde 400 y ya no se toca la base de datos.
-4. El endpoint llama al método del repositorio que corresponde.
-5. El repositorio pide una conexión abierta a `ConexionDb`, arma el comando SQL con parámetros y lo ejecuta en MySQL.
-6. Al terminar el método, `using` cierra la conexión.
-7. El repositorio regresa el resultado y el endpoint lo convierte en una respuesta HTTP.
+Por ejemplo, esto pasa al agregar un producto:
+
+1. En Swagger se llena el JSON del producto y se presiona **Execute**. Eso manda un `POST /api/productos`.
+2. El endpoint recibe la petición y convierte el JSON en un objeto `Producto`.
+3. El método `Validar` revisa que los datos estén bien, por ejemplo que haya nombre y que el precio no sea negativo. Si algo está mal, responde 400 y no llega a la base de datos.
+4. Si todo está bien, el endpoint llama a `Insertar` del repositorio.
+5. El repositorio le pide a `ConexionDb` una conexión abierta y ejecuta el `INSERT` en MySQL. La conexión se cierra sola al terminar, gracias a `using`.
+6. MySQL genera el id del producto y el repositorio se lo regresa al endpoint.
+7. El endpoint responde 201 con el producto creado, y Swagger muestra esa respuesta.
+
+Las demás operaciones siguen el mismo camino y solo cambian el método del repositorio y la consulta SQL. Si el producto que se busca, actualiza o elimina no existe, el endpoint responde 404.
 
 ### Qué hace cada método del repositorio
 
